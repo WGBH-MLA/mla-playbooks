@@ -1,0 +1,4 @@
+---
+- name: install apache httpd
+  yum: name=httpd state=present
+  sudo: yes

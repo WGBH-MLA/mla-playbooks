@@ -4,3 +4,6 @@
 - name: install webserver
   hosts: webservers
   remote_user: ec2-user
+
+  roles:
+    - httpd

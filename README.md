@@ -1,3 +1,2 @@
-# mla-playbooks
+# Ansible Playbooks and Roles for WGBH Media Library and Archives
 
-[![Build Status](https://travis-ci.org/WGBH/mla-playbooks.svg?branch=master)](https://travis-ci.org/WGBH/mla-playbooks)

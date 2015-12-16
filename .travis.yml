@@ -7,7 +7,7 @@ install:
   - pip install ansible
 
 script:
-  - ansible-playbook --private-key ~/.ssh/ansible-test.pem -i openvault/hosts openvault/openvault.yml
+  - ansible-playbook -i "localhost," -c local openvault/openavult.yml
 
 env:
   - ANSIBLE_HOST_KEY_CHECKING=False

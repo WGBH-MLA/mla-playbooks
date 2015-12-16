@@ -1,0 +1,8 @@
+---
+- name: Create shared directory
+  file: path={{ app_path }}/shared/ state=directory owner={{ app_user }} group={{ app_group }} force=no
+  sudo: yes
+
+- name: Create config directory
+  file: path={{ app_path }}/shared/config/ state=directory owner={{ app_user }} group={{ app_group }} force=no
+  sudo: yes

@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: Pablo Castillo
+  company: Crush & Lovely
+  description: Creates a working directory for a capistrano type deployment
+  license: MIT
+  min_ansible_version: 1.6
+  platforms:
+    - name: Ubuntu
+      versions:
+        - Precise
+        - Trusty
+  categories:
+    - system
+dependencies: []
+version: 2.0.0

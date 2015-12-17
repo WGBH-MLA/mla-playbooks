@@ -8,9 +8,7 @@
   roles:
     - httpd
     - geerlingguy.ruby
-    - crushlovely.capistrano
-    
-  vars:
-    app_path: /var/www/openvault
-    app_user: ec2-user
-    app_group: ec2-user
+    - role: crushlovely.capistrano
+      app_path: /var/www/openvault
+      app_user: ec2-user
+      app_group: ec2-user

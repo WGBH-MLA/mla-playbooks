@@ -7,7 +7,8 @@
 
   roles:
     - httpd
-    - geerlingguy.ruby
+    - role: geerlingguy.ruby
+      sudo: yes
     - role: geerlingguy.git
       sudo: yes
     - role: crushlovely.capistrano

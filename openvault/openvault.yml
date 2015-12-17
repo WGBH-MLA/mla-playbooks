@@ -9,6 +9,7 @@
     - httpd
     - role: geerlingguy.ruby
       sudo: yes
+      ruby_install_from_source: true
     - role: geerlingguy.git
       sudo: yes
     - role: crushlovely.capistrano

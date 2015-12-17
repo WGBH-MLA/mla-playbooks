@@ -8,6 +8,8 @@
   roles:
     - httpd
     - geerlingguy.ruby
+    - role: geerlingguy.git
+      sudo: yes
     - role: crushlovely.capistrano
       app_path: /var/www/openvault
       app_user: ec2-user

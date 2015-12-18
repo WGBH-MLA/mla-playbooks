@@ -1,0 +1,42 @@
+# tasks/single.yml
+#
+# Controlls a single instance of MySQL.
+---
+- name: Copy my.cnf global MySQL configuration.
+  template: >
+    src=my.cnf.j2
+    dest="{{ mysql_conf_file }}"
+    owner=root group=root mode=644
+  notify: restart mysql
+
+- include: "service.yml"
+- include: "grants.yml"
+
+- name: Remove the MySQL test database.
+  mysql_db: >
+    name="test"
+    state=absent
+    login_user={{ mysql_root_username }}
+    login_password={{ mysql_root_password }}
+
+- name: Ensure MySQL databases are present.
+  mysql_db: >
+    name="{{ item.name }}"
+    collation="{{ item.collation | default('utf8_general_ci') }}"
+    encoding="{{ item.encoding | default('utf8') }}"
+    state=present
+  with_items: mysql_databases
+
+- name: Ensure MySQL users are present.
+  mysql_user: >
+    name="{{ item.name }}"
+    host="{{ item.host | default('localhost') }}"
+    password="{{ item.password }}"
+    priv="{{ item.priv | default('*.*:USAGE') }}"
+    state=present
+  with_items: mysql_users
+
+
+
+# ex: ft=ansible et ts=2 sw=2:
+

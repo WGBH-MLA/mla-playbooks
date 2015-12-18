@@ -1,0 +1,52 @@
+# tasks/multi.yml
+#
+# Manages multiple instances on the same host
+# of MySQL.
+---
+- name: Copy my.cnf global MySQL configuration.
+  template: >
+    src=my.cnf.j2
+    dest="{{ mysql_conf_file }}"
+    owner=root group=root mode=644
+  notify: mysqld_multi restart
+
+- name: MySQL Multi | Create data directories.
+  shell: "mysql_install_db --user {{ mysql_user }} --datadir={{ mysql_datadir }}{{ item.GNR }}"
+  args:
+    creates: "{{ mysql_datadir }}{{ item.GNR }}"
+  with_items: mysql_multi
+
+- name: MySQL Multi | Disable MySQL init script.
+  service: >
+    name={{ mysql_daemon }}
+    state=stopped
+    enabled=no
+
+- name: MySQL Multi | Enabling init script.
+  template: >
+    src="mysqld_multi.server"
+    dest="{{ mysql_initd }}/{{ mysql_multi_daemon }}"
+    force="yes"
+    mode=0755
+
+- name: MySQL Multi | Enable multiple instances on boot.
+  service: >
+    name={{ mysql_multi_daemon }}
+    state=started
+    enabled=yes
+
+- name: MySQL Multi | Update root password for local hosts.
+  mysql_user: >
+    name=root
+    host={{ item[1] }}
+    password={{ mysql_root_password }}
+    login_user={{ mysql_root_username }}
+    login_password={{ mysql_root_password }}
+    login_host="127.0.0.1"
+    login_port={{ item[0].port }}
+    check_implicit_admin=true
+  with_nested:
+    - mysql_multi
+    - [ "127.0.0.1", "::1", "localhost" ]
+
+# ex: ft=ansible et ts=2 sw=2:

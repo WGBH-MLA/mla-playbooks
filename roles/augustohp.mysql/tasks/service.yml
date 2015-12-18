@@ -1,0 +1,13 @@
+# tasks/service.yml
+#
+# Set up MySQL daemon (and service).
+---
+
+- name: Ensure MySQL is started and enabled on boot.
+  service: >
+    name={{ mysql_daemon }}
+    state=started
+    enabled=yes
+
+
+# ex: ft=ansible et ts=2 sw=2:

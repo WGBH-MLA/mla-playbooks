@@ -1,0 +1,30 @@
+# test.yml
+#
+# Playbook to test the role under different environments,
+# like Vagrant and Travis.
+---
+- hosts: all
+  sudo: yes
+  vars_files:
+    - "defaults/main.yml"
+  tasks:
+    - include: "tasks/main.yml"
+      vars:
+        mysql_innodb_log_file_size: "5M"
+        mysql_multi:
+          - GNR: 1
+            port: 3306
+            pid-file: "/var/run/mysqld/mysqld1.pid"
+            socket: "/var/run/mysqld/mysql1.sock"
+          - GNR: 2
+            port: 3307
+            pid-file: "/var/run/mysqld/mysqld2.pid"
+            socket: "/var/run/mysqld/mysql2.sock"
+          - GNR: 3
+            port: 3308
+            pid-file: "/var/run/mysqld/mysqld3.pid"
+            socket: "/var/run/mysqld/mysql3.sock"
+  handlers:
+    - include: "handlers/main.yml"
+
+# ex: ft=ansible et ts=2 sw=2:

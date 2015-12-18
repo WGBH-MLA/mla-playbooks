@@ -1,0 +1,17 @@
+# test.yml
+#
+# Playbook to test the role under different environments,
+# like Vagrant and Travis.
+---
+- hosts: all
+  sudo: yes
+  vars_files:
+    - "defaults/main.yml"
+  tasks:
+    - include: "tasks/main.yml"
+      vars:
+        mysql_innodb_log_file_size: "5M"
+  handlers:
+    - include: "handlers/main.yml"
+
+# ex: ft=ansible et ts=2 sw=2:

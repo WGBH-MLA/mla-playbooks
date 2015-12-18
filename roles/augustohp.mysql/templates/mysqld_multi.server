@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# A simple startup script for mysqld_multi by Tim Smith and Jani Tolonen.
+# This script assumes that my.cnf file exists either in /etc/my.cnf or
+# /root/.my.cnf and has groups [mysqld_multi] and [mysqldN]. See the
+# mysqld_multi documentation for detailed instructions.
+#
+# This script can be used as /etc/init.d/mysql.server
+#
+# Comments to support chkconfig on RedHat Linux
+# chkconfig: 2345 64 36
+# description: A very fast and reliable SQL database engine.
+#
+# Version 1.0
+#
+
+bindir=/usr/bin
+MYSQLD_MULTI=$(which mysqld_multi)
+
+[[ -z "$MYSQLD_MULTI" ]] && { echo "Could not find mysqld_multi program."; exit 1; };
+
+
+case "$1" in
+    'start' )
+        "$MYSQLD_MULTI" start $2
+        EXIT=$?
+        sleep 5;
+        exit $EXIT
+        ;;
+    'stop' )
+        "$MYSQLD_MULTI" stop $2
+        EXIT=$?
+        sleep 5;
+        exit $EXIT
+        ;;
+    'report' | 'status' )
+        REPORT_CMD="$MYSQLD_MULTI report $2"
+        $REPORT_CMD
+        OUTPUT=$($REPORT_CMD | grep "is running")
+        [[ -z "$OUTPUT" ]] && { exit 3; } || { exit 0; }
+        ;;
+    'restart' )
+        "$MYSQLD_MULTI" stop $2 && "$MYSQLD_MULTI" start $2
+        EXIT=$?
+        sleep 5;
+        exit $EXIT
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|report|restart}" >&2
+        ;;
+esac

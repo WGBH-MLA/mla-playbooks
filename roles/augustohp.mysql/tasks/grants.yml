@@ -1,0 +1,34 @@
+# tasks/grants.yml
+#
+# Control grants on MySQL instance.
+---
+
+- name: Update MySQL root password for all local hosts.
+  mysql_user: >
+    name=root
+    host={{ item }}
+    password={{ mysql_root_password }}
+    login_user={{ mysql_root_username }}
+    login_password={{ mysql_root_password }}
+    check_implicit_admin=true
+  with_items:
+    - 127.0.0.1
+    - ::1
+    - localhost
+
+- name: Delete anonymous MySQL.
+  mysql_user: >
+    name=""
+    state=absent
+    login_user={{ mysql_root_username }}
+    login_password={{ mysql_root_password }}
+    check_implicit_admin=true
+
+- name: Save root credentials.
+  template: >
+    src=python-my.cnf.j2
+    dest={{ mysql_user_home }}/.my.cnf
+    owner=root group=root mode=600
+  when: mysql_save_root_credentials
+
+# ex: ft=ansible et ts=2 sw=2:

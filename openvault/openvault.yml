@@ -1,11 +1,15 @@
 ---
 # This playbook deploys the application stack required for Open Vault
 
-- name: install webserver
+- name: Provision Open Vault webserver
   hosts: webservers
   remote_user: ec2-user
 
   roles:
+    - role: gcc
+      sudo: yes
+    - role: gcc-c++
+      sudo: yes
     - httpd
     - role: geerlingguy.ruby
       sudo: yes

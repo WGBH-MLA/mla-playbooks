@@ -16,6 +16,10 @@
     - httpd
     - role: geerlingguy.git
       sudo: yes
+    - role: python_modules
+      sudo: yes
+      python_modules:
+        - Mysql-python
     - role: geerlingguy.mysql
       sudo: yes
       mysql_packages:

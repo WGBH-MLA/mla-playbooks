@@ -1,0 +1,4 @@
+---
+- name: install patch with yum
+  yum: name=patch state=installed
+  when: ansible_os_family == 'RedHat'

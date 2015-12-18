@@ -1,0 +1,16 @@
+# handlers/main.yml
+#
+# MySQL replayable tasks.
+---
+
+- name: restart mysql
+  service: >
+    name={{ mysql_daemon }}
+    state=restarted
+
+- name: mysqld_multi restart
+  service: >
+    name={{ mysql_multi_daemon }}
+    state=restarted
+
+# ex: ft=ansible et ts=2 sw=2:

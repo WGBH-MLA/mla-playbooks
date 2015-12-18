@@ -1,0 +1,8 @@
+---
+- name: install gcc with yum
+  yum: name=gcc state=installed
+  when: ansible_os_family == 'RedHat'
+
+- name: install gcc with apt
+  apt: name=gcc state=installed
+  when: ansible_os_family == 'Debian'

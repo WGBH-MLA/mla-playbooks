@@ -1,0 +1,4 @@
+---
+- name: install gcc-c++ with yum
+  yum: name=gcc-c++ state=installed
+  when: ansible_os_family == 'RedHat'

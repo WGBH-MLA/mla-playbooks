@@ -10,14 +10,18 @@
       sudo: yes
     - role: gcc-c++
       sudo: yes
-    - httpd
     - role: geerlingguy.ruby
       sudo: yes
       ruby_install_from_source: true
+    - httpd
     - role: geerlingguy.git
       sudo: yes
-    - role: augustohp.mysql
+    - role: geerlingguy.mysql
       sudo: yes
+      mysql_packages:
+        - mysql
+        - mysql-server
+        - mysql-devel
     - role: crushlovely.capistrano
       app_path: /var/www/openvault
       app_user: ec2-user

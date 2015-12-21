@@ -32,3 +32,10 @@
       app_path: /var/www/openvault
       app_user: ec2-user
       app_group: ec2-user
+
+- name: install the ruby racer
+  hosts: webservers
+  remote_user: ec2-user
+  sudo: yes
+  tasks:
+    - gem: "name=therubyracer state=present"

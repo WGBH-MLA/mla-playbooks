@@ -15,6 +15,16 @@
   roles:
     - { role: patch, sudo: yes }
 
+- name: Install libcurl-devel
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - yum: name=libcurl-devel
+      become: yes
+      become_method: sudo
+  tags:
+    - libcurl-devel
+
 - name: Install ruby from source
   hosts: webservers
   remote_user: ec2-user

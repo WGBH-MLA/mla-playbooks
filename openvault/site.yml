@@ -33,26 +33,6 @@
   roles:
   - { role: geerlingguy.git, sudo: yes }
 
-# required for cleaning up default install of mysql
-# using the geerlingguy.mysql role.
-# - name: Install mysql-python module
-#   hosts: webservers
-#   remote_user: ec2-user
-#   tasks:
-#     - pip: "name=Mysql-python state=present"
-#       sudo: yes
-
-- name: Install MySQL
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-    - role: geerlingguy.mysql
-      sudo: yes
-      mysql_packages:
-        - mysql
-        - mysql-server
-        - mysql-devel
-
 - name: Configure server for Capistrano deployments
   hosts: webservers
   remote_user: ec2-user

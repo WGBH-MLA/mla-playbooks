@@ -1,11 +1,9 @@
 ---
 - name: Ensure Apache is installed
   yum: name=httpd state=present
-  sudo: yes
 
 - name: Ensure Apache is running
   service:
     name: httpd
     state: started
     enabled: yes
-  sudo: yes

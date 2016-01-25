@@ -25,6 +25,16 @@
   tags:
     - libcurl-devel
 
+- name: Install sqlite-devel
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - yum: name=sqlite-devel
+      become: yes
+      become_method: sudo
+  tags:
+    - sqlite-devel
+
 - name: Install ruby from source
   hosts: webservers
   remote_user: ec2-user

@@ -47,6 +47,18 @@
   roles:
     - { role: httpd, sudo: yes }
 
+
+- name: Install Phusion Passenger
+  hosts: webservers
+  remote_user: ec2-user
+  # needs path to ruby gem executables in /usr/local/bin
+  environment:
+    PATH: '{{ ansible_env.PATH }}:/usr/local/bin'
+  roles:
+    - { role: passenger, sudo: yes }
+  tags:
+    - passenger
+
 - name: Install Git
   hosts: webservers
   remote_user: ec2-user

@@ -1,0 +1,21 @@
+---
+- name: install passenger dependencies
+  include: passenger-dependencies.yml
+
+# NOTE: Phusion Passenger currently cannot be installed with yum. See here...
+#   https://www.phusionpassenger.com/library/install/apache/install/oss/el7/#install_packages
+# Below is the ansible way of installing Passenger as a ruby gem, which is 
+# documented here: 
+#   https://www.phusionpassenger.com/library/install/apache/install/oss/rubygems_norvm/
+- name: install passenger gem
+  gem:
+    name: passenger
+    # Setting user_install to 'no' installs gems in default location, rather than
+    # the ~/.gem/ (or /root/.gem/ if you are using sudo).
+    user_install: no
+
+- name: run the Passenger Apache module installer
+  command: 'passenger-install-apache2-module --auto'
+
+- name: generate passenger.conf file
+  shell: passenger-install-apache2-module --snippet > /etc/httpd/conf.d/passenger.conf

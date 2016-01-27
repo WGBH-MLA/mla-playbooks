@@ -1,0 +1,9 @@
+---
+- name: install http-devel
+  yum: name=httpd-devel
+
+- name: install Apache Portable Runtime development package
+  yum: name=apr-devel
+
+- name: install Apache Portable Runtime developer utilities
+  yum: name=apr-util-devel

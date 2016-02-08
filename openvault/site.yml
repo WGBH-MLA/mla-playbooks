@@ -59,7 +59,7 @@
         state: directory
         path: /etc/httpd/sites-enabled
     - template:
-        src: templates/openvault.conf.j2
+        src: templates/openvault.conf
         dest: /etc/httpd/sites-available/openvault.conf
     - file:
         state: link

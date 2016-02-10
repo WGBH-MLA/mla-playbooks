@@ -47,6 +47,30 @@
   roles:
     - { role: httpd, sudo: yes }
 
+- name: Config apache virtual host
+  hosts: webservers
+  remote_user: ec2-user
+  sudo: yes
+  tasks:
+    - file:
+        state: directory
+        path: /etc/httpd/sites-available
+    - file:
+        state: directory
+        path: /etc/httpd/sites-enabled
+    - template:
+        src: templates/openvault.conf
+        dest: /etc/httpd/sites-available/openvault.conf
+    - file:
+        state: link
+        src: /etc/httpd/sites-available/openvault.conf
+        dest: /etc/httpd/sites-enabled/openvault.conf
+    - lineinfile:
+        dest: /etc/httpd/conf/httpd.conf
+        regexp: 'include \/etc\/httpd\/sites-enabled\/'
+        line: "include /etc/httpd/sites-enabled/"
+  tags:
+    - apache-vhost-config
 
 - name: Install Phusion Passenger
   hosts: webservers

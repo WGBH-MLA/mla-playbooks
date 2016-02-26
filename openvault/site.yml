@@ -102,3 +102,10 @@
   tasks:
     - gem: "name=therubyracer state=present"
       sudo: yes
+
+- name: restart httpd
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - service: name=httpd state=started enabled=yes
+      sudo: yes

@@ -89,12 +89,16 @@
   roles:
   - { role: geerlingguy.git, sudo: yes }
 
-- name: Configure server for Capistrano deployments
+- name: Create capistrano shared directories
   hosts: webservers
   remote_user: ec2-user
-  roles:
-    - { role: crushlovely.capistrano, app_path: /var/www/openvault,
-        app_user: ec2-user, app_group: ec2-user }
+  tasks:
+  - name: "Create document root, shared directory, and shared config directory"
+    file: path=/var/www/openvault/shared/config state=directory owner=ec2-user group=ec2-user force=yes
+    sudo: yes
+  tags:
+    - capistrano
+
 
 - name: install the ruby racer
   hosts: webservers

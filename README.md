@@ -6,10 +6,17 @@ used by WGBH Media Library and Archives.
 These instructions are intended for WGBH-MLA staff, and are not expected to work
 for the general public.
 
-## Open Vault playbook
+## Playbooks
 
-This is used to provision the virtual machines needed for running
-the [Open Vault website code](https://github.com/WGBH/openvault3).
+Each Blacklight site we maintain has its own playbook here which provisions the VMs:
+- openvault, for [Open Vault](https://github.com/WGBH/openvault3)
+- aapb, for [American Archive](https://github.com/WGBH/AAPB2)
+- bostonlocaltv, for [Boston TV News](https://github.com/WGBH/bostonlocaltv/)
+
+The configurations are essentially identical. The redundancy is fine because our
+priority is to make these simple, rather than making things more immediately complex
+by factoring out the differences.
+
 The playbook is intended to be run from a developer's computer.
 
 ### Prerequisites
@@ -21,6 +28,8 @@ Before the playbook can be run, you need to ensure the following:
   * **You have the private key required to SSH into the host.**
 
 ### Setup your local copy of the playbook
+
+(The examples below use `openvault`, but replace as appropriate.)
 
 1. **Clone the repository**
   ```

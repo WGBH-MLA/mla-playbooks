@@ -15,7 +15,7 @@
     user_install: no
 
 - name: run the Passenger Apache module installer
-  command: 'passenger-install-apache2-module --auto'
+  shell: '/usr/local/bin/passenger-install-apache2-module --auto'
 
 - name: generate passenger.conf file
-  shell: passenger-install-apache2-module --snippet > /etc/httpd/conf.d/passenger.conf
+  shell: /usr/local/bin/passenger-install-apache2-module --snippet > /etc/httpd/conf.d/passenger.conf

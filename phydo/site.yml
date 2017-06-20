@@ -1,19 +1,36 @@
 ---
-# This playbook deploys the application stack required for Open Vault
+# This playbook deploys the application stack required for Phydo
 
 - name: Install build tools
   hosts: webservers
   remote_user: ec2-user
   roles:
-    - { role: gcc, sudo: yes }
-    - { role: gcc-c++, sudo: yes }
+    - { role: gcc, become: true }
+    - { role: gcc-c++, become: true }
+
+
+- name: install and upgrade yum packages
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - yum:  { name: '*', state: latest }
+    - yum: { name: 'ruby20', state: removed }
+    - yum: { name: 'ruby23', state: present }
+    - yum: { name: 'ruby23-devel', state: present }
+    - yum: { name: 'zlib-devel', state: present }
+    - yum: { name: 'openssl-devel', state: present }
+    - yum: { name: 'libffi-devel', state: present }
+    - yum: { name: 'ImageMagick', state: present }
+  tags:
+    - yum-packages
 
 # Required for nokogiri gem install
 - name: Install patch
   hosts: webservers
   remote_user: ec2-user
   roles:
-    - { role: patch, sudo: yes }
+    - { role: patch, become: true }
 
 - name: Install libcurl-devel
   hosts: webservers
@@ -35,36 +52,38 @@
   tags:
     - sqlite-devel
 
-# Disabling in favor of RVM. TODO: remove this if RVM works.
-# - name: Install ruby from source
-#   hosts: webservers
-#   remote_user: ec2-user
-#   roles:
-#     - { role: geerlingguy.ruby, sudo: yes, ruby_install_from_source: true }
-
-# Borrowed from https://github.com/rvm/rvm1-ansible
-- name: Configure servers with ruby support for single user
+# Use FcrepoWrapper and SolrWrapper to spin up instances of
+# Fcrepo and Solr. Normally used in development, but we're
+# using them for demo instaces of Phydo.
+- name: Install SolrWrapper and FcrepoWrapper
   hosts: webservers
   remote_user: ec2-user
-  roles:
-    - { role: rvm_io.ruby,
-        tags: ruby,
-        rvm1_rubies: ['ruby-2.3.1'],
-        rvm1_user: 'ec2-user'
-      }
+  tasks:
+    - gem: { name: fcrepo_wrapper, version: '0.9.0', state: present }
+    - gem: { name: solr_wrapper, version: '1.2.0', state: present }
   tags:
-      - rvm
+    - solr_wrapper
+    - frepo_wrapper
+
 
 - name: Install apache webserver
   hosts: webservers
   remote_user: ec2-user
   roles:
-    - { role: httpd, sudo: yes }
+    - { role: httpd, become: true }
+
+- name: Install bundler
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - gem: { name: bundle, state: latest }
+  tags:
+    - bundler
 
 - name: Config apache virtual host
   hosts: webservers
   remote_user: ec2-user
-  sudo: yes
+  become: true
   tasks:
     - file:
         state: directory
@@ -89,11 +108,11 @@
 - name: Install Phusion Passenger
   hosts: webservers
   remote_user: ec2-user
-  # needs path to ruby gem executables in /usr/local/bin
+  # needs path to ruby gem executables
   environment:
-    PATH: '{{ ansible_env.PATH }}:/usr/local/bin'
+    PATH: /home/ec2-user/bin:{{ ansible_env.PATH }}
   roles:
-    - { role: passenger, sudo: yes }
+    - { role: passenger, become: true }
   tags:
     - passenger
 
@@ -101,31 +120,23 @@
   hosts: webservers
   remote_user: ec2-user
   roles:
-  - { role: geerlingguy.git, sudo: yes }
+  - { role: geerlingguy.git, become: true }
+  tags:
+    - git
 
 - name: Create capistrano shared directories
   hosts: webservers
   remote_user: ec2-user
   tasks:
-  - name: "Create document root, shared directory, and shared config directory"
+  - name: "Create shared directory and shared config directory"
     file: path=/var/www/phydo/shared/config state=directory owner=ec2-user group=ec2-user force=yes
-    sudo: yes
+    become: true
   tags:
     - capistrano
-
-
-- name: install the ruby racer
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - gem: "name=therubyracer state=present"
-      sudo: yes
-  tags:
-    - therubyracer
 
 - name: restart httpd
   hosts: webservers
   remote_user: ec2-user
   tasks:
     - service: name=httpd state=restarted enabled=yes
-      sudo: yes
+      become: true

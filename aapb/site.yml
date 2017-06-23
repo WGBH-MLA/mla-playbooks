@@ -5,15 +5,39 @@
   hosts: webservers
   remote_user: ec2-user
   roles:
-    - { role: gcc, sudo: yes }
-    - { role: gcc-c++, sudo: yes }
+    - { role: gcc, become: true }
+    - { role: gcc-c++, become: true }
+
+- name: install and upgrade yum packages
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - yum:  { name: '*', state: latest }
+    # TODO: Figure out a better way to specify the ruby version. The (current)
+    # Amazon Linux AMI comes with Ruby 2.0, but this will probably change.
+    - yum: { name: 'ruby20', state: removed }
+    - yum: { name: 'ruby22', state: present }
+    - yum: { name: 'ruby22-devel', state: present }
+    - yum: { name: 'zlib-devel', state: present }
+    - yum: { name: 'openssl-devel', state: present }
+  tags:
+    - yum-packages
+
+- name: install bundler
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - gem: { name: bundler, state: present }
+  tags:
+    - bundler
 
 # Required for nokogiri gem install
 - name: Install patch
   hosts: webservers
   remote_user: ec2-user
   roles:
-    - { role: patch, sudo: yes }
+    - { role: patch, become: true }
 
 - name: Install libcurl-devel
   hosts: webservers
@@ -35,22 +59,16 @@
   tags:
     - sqlite-devel
 
-- name: Install ruby from source
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-    - { role: geerlingguy.ruby, sudo: yes, ruby_install_from_source: true }
-
 - name: Install apache webserver
   hosts: webservers
   remote_user: ec2-user
   roles:
-    - { role: httpd, sudo: yes }
+    - { role: httpd, become: true }
 
 - name: Config apache virtual host
   hosts: webservers
   remote_user: ec2-user
-  sudo: yes
+  become: true
   tasks:
     - file:
         state: directory
@@ -59,7 +77,7 @@
         state: directory
         path: /etc/httpd/sites-enabled
     - template:
-        src: templates/aapb.conf
+        src: templates/etc/httpd/sites-available/aapb.conf
         dest: /etc/httpd/sites-available/aapb.conf
     - file:
         state: link
@@ -79,7 +97,7 @@
   environment:
     PATH: '{{ ansible_env.PATH }}:/usr/local/bin'
   roles:
-    - { role: passenger, sudo: yes }
+    - { role: passenger, become: true }
   tags:
     - passenger
 
@@ -87,7 +105,9 @@
   hosts: webservers
   remote_user: ec2-user
   roles:
-  - { role: geerlingguy.git, sudo: yes }
+  - { role: geerlingguy.git, become: true }
+  tags:
+    - git
 
 - name: Create capistrano shared directories
   hosts: webservers
@@ -95,21 +115,34 @@
   tasks:
   - name: "Create document root, shared directory, and shared config directory"
     file: path=/var/www/aapb/shared/config state=directory owner=ec2-user group=ec2-user force=yes
-    sudo: yes
+    become: true
   tags:
     - capistrano
-
 
 - name: install the ruby racer
   hosts: webservers
   remote_user: ec2-user
   tasks:
     - gem: "name=therubyracer state=present"
-      sudo: yes
+      become: true
+
+- name: configure logrotate for httpd and jettywrapper logs
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - template:
+        src: templates/etc/logrotate.d/httpd
+        dest: /etc/logrotate.d/httpd
+    - template:
+        src: templates/etc/logrotate.d/jettywrapper
+        dest: /etc/logrotate.d/jettywrapper
+  tags:
+    - logrotate
 
 - name: restart httpd
   hosts: webservers
   remote_user: ec2-user
   tasks:
     - service: name=httpd state=restarted enabled=yes
-      sudo: yes
+      become: true

@@ -1,6 +1,6 @@
 ---
 - name: Ensure git's dependencies are installed (RedHat).
-  yum: "pkg={{ item }} state=installed"
+  package: "name={{ item }} state=installed"
   with_items:
     - gettext-devel
     - expat-devel
@@ -9,11 +9,12 @@
     - perl-devel
     - openssl-devel
     - subversion-perl
+    - make
     - gcc
   when: ansible_os_family == 'RedHat'
 
 - name: Ensure git's dependencies are installed (Debian).
-  apt: "pkg={{ item }} state=installed"
+  apt: "name={{ item }} state=installed"
   with_items:
     - libcurl4-gnutls-dev
     - libexpat1-dev
@@ -23,29 +24,40 @@
     - gcc
   when: ansible_os_family == 'Debian'
 
+- name: Get installed version
+  command: >
+    git --version
+    warn=no
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  register: git_installed_version
+
+- name: Force git install if the version numbers do not match
+  set_fact:
+    git_reinstall_from_source: true
+  when: 'git_install_from_source_force_update and (git_installed_version|success and (git_installed_version.stdout | regex_replace("^.*?([0-9\.]+)$", "\\1") | version_compare(git_version, operator="!=")))'
+
 - name: Download git.
   get_url:
     url: "https://www.kernel.org/pub/software/scm/git/git-{{ git_version }}.tar.gz"
     dest: "{{ workspace }}/git-{{ git_version }}.tar.gz"
+  when:  git_installed_version|failed or git_reinstall_from_source
 
 - name: Expand git archive.
-  command: >
-    tar -zxf {{ workspace }}/git-{{ git_version }}.tar.gz
-    chdir={{ workspace }}
-    creates={{ workspace }}/git-{{ git_version }}/README
-
-- name: Check if git is installed.
-  command: which git
-  changed_when: false
-  failed_when: false
-  register: git_installed
+  unarchive:
+    src: "{{ workspace }}/git-{{ git_version }}.tar.gz"
+    dest: "{{ workspace }}"
+    creates: "{{ workspace }}/git-{{ git_version }}/README"
+    copy: no
+  when:  git_installed_version|failed or git_reinstall_from_source
 
 - name: Build git.
   command: >
     make prefix={{ git_install_path }} {{ item }}
     chdir={{ workspace }}/git-{{ git_version }}
-  when: git_installed|failed
   with_items:
     - all
     - install
-  sudo: yes
+  when:  git_installed_version|failed or git_reinstall_from_source
+  become: yes

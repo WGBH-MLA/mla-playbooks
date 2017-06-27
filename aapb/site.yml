@@ -140,6 +140,7 @@
     - template:
         src: templates/etc/cron.hourly/logrotate
         dest: /etc/cron.hourly/logrotate
+        mode: 0755
   tags:
     - logrotate
 

@@ -1,0 +1,188 @@
+---
+# This playbook deploys the application stack required for Transcript Editor
+
+- name: Install build tools
+  hosts: webservers
+  remote_user: ec2-user
+  roles:
+    - { role: gcc, become: true }
+    - { role: gcc-c++, become: true }
+
+- name: install and upgrade yum packages
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+#     - yum:  { name: '*', state: latest }
+#     # TODO: Figure out a better way to specify the ruby version. The (current)
+#     # Amazon Linux AMI comes with Ruby 2.0, but this will probably change.
+    - yum: { name: 'ruby20', state: removed }
+    - yum: { name: 'ruby22', state: present }
+    - yum: { name: 'ruby22-devel', state: present }
+    - yum: { name: 'zlib-devel', state: present }
+    - yum: { name: 'openssl-devel', state: present }
+    - yum: { name: 'postgresql96-server', state: present }
+    - yum: { name: 'postgresql96', state: present }
+    - yum: { name: 'postgresql96-devel', state: present }
+    - yum: { name: 'epel-release', state: present }
+  tags:
+    - yum-packages
+
+# psycopg2 for Postgresql
+- name: Install psycopg2
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - pip: name=psycopg2
+      become: yes
+      become_method: sudo
+  tags:
+    - psycopg2
+
+- name: install gems
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - gem: { name: bundler, state: present, user_install: no }
+  tags:
+    - bundler
+
+# Required for nokogiri gem install
+- name: Install patch
+  hosts: webservers
+  remote_user: ec2-user
+  roles:
+    - { role: patch, become: true }
+
+- name: Install libcurl-devel
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - yum: name=libcurl-devel
+      become: yes
+      become_method: sudo
+  tags:
+    - libcurl-devel
+
+- name: Install sqlite-devel
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - yum: name=sqlite-devel
+      become: yes
+      become_method: sudo
+  tags:
+    - sqlite-devel
+
+- name: Install apache webserver
+  hosts: webservers
+  remote_user: ec2-user
+  roles:
+    - { role: httpd, become: true }
+
+- name: Config apache virtual host
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - file:
+        state: directory
+        path: /etc/httpd/sites-available
+    - file:
+        state: directory
+        path: /etc/httpd/sites-enabled
+    - template:
+        src: templates/etc/httpd/sites-available/transcript-editor.conf
+        dest: /etc/httpd/sites-available/transcript-editor.conf
+    - file:
+        state: link
+        src: /etc/httpd/sites-available/transcript-editor.conf
+        dest: /etc/httpd/sites-enabled/transcript-editor.conf
+    - lineinfile:
+        dest: /etc/httpd/conf/httpd.conf
+        regexp: 'include \/etc\/httpd\/sites-enabled\/'
+        line: "include /etc/httpd/sites-enabled/"
+  tags:
+    - apache-vhost-config
+
+- name: Install Phusion Passenger
+  hosts: webservers
+  remote_user: ec2-user
+  # needs path to ruby gem executables in /usr/local/bin
+  environment:
+    PATH: '{{ ansible_env.PATH }}:/usr/local/bin'
+  roles:
+    - { role: passenger, become: true }
+  tags:
+    - passenger
+
+- name: Install Git
+  hosts: webservers
+  remote_user: ec2-user
+  roles:
+  - { role: geerlingguy.git, become: true }
+  tags:
+    - git
+
+- name: Create capistrano shared directories
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+  - name: "Create document root, shared directory, and shared config directory"
+    file: path=/var/www/transcript-editor/shared/config state=directory owner=ec2-user group=ec2-user force=yes
+    become: true
+  tags:
+    - capistrano
+
+- name: configure logrotate for httpd logs
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - template:
+        src: templates/etc/logrotate.d/httpd
+        dest: /etc/logrotate.d/httpd
+    - template:
+        src: templates/etc/cron.hourly/logrotate
+        dest: /etc/cron.hourly/logrotate
+        mode: 0755
+  tags:
+    - logrotate
+
+- name: upload config file to shared/config directory
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - template:
+        src: templates/config/database.sample.yml
+        dest: /var/www/transcript-editor/shared/config/database.sample.yml
+    - template:
+        src: templates/config/application.sample.yml
+        dest: /var/www/transcript-editor/shared/config/application.sample.yml
+  tags:
+    - database.sample.yml
+    - application.sample.yml
+
+- name: upload backup shell script
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - template:
+        src: templates/other/backup.sh
+        dest: /home/ec2-user/backup.sh
+        mode: 711
+  tags:
+    - backup.sh
+
+- name: backup database cron task
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - cron: name="1" job="/home/ec2-user/backup.sh"
+
+- name: restart httpd
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - service: name=httpd state=restarted enabled=yes
+      become: true

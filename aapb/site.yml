@@ -17,8 +17,10 @@
     # TODO: Figure out a better way to specify the ruby version. The (current)
     # Amazon Linux AMI comes with Ruby 2.0, but this will probably change.
     - yum: { name: 'ruby20', state: removed }
-    - yum: { name: 'ruby22', state: present }
-    - yum: { name: 'ruby22-devel', state: present }
+    - yum: { name: 'ruby22', state: removed }
+    - yum: { name: 'ruby22-devel', state: removed }
+    - yum: { name: 'ruby24', state: present }
+    - yum: { name: 'ruby24-devel', state: present }
     - yum: { name: 'zlib-devel', state: present }
     - yum: { name: 'openssl-devel', state: present }
   tags:

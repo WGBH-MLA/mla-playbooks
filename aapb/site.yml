@@ -23,8 +23,51 @@
     - yum: { name: 'ruby24-devel', state: present }
     - yum: { name: 'zlib-devel', state: present }
     - yum: { name: 'openssl-devel', state: present }
+
   tags:
     - yum-packages
+
+- name: install yum packages for s3fs requirements
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - yum: { name: 'fuse', state: present }
+    - yum: { name: 'fuse-devel', state: present }
+    - yum: { name: 'git', state: present }
+    - yum: { name: 'libcurl-devel', state: present }
+    - yum: { name: 'libxml2-devel', state: present }
+    - yum: { name: 'make', state: present }
+    - yum: { name: 'openssl-devel', state: present }
+
+  tags:
+    - yum-packages
+
+- name: Install Git
+  hosts: webservers
+  remote_user: ec2-user
+  roles:
+  - { role: geerlingguy.git, become: true }
+  tags:
+    - git
+
+- name: clone s3fs from Github
+  remote_user: ec2-user
+  hosts: webservers
+  tasks:
+    - git:
+        repo: https://github.com/s3fs-fuse/s3fs-fuse.git
+        version: master
+        dest: /
+        accept_hostkey: true
+  tags:
+    - s3fs
+
+- name: compiles s3fs
+  remote_user: ec2-user
+  hosts: webservers
+  tasks:
+    - command: cd /s3fs && ./autogen.sh && ./configure && make && sudo make install
 
 - name: install bundler
   hosts: webservers
@@ -102,14 +145,6 @@
     - { role: passenger, become: true }
   tags:
     - passenger
-
-- name: Install Git
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-  - { role: geerlingguy.git, become: true }
-  tags:
-    - git
 
 - name: Create capistrano shared directories
   hosts: webservers

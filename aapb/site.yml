@@ -4,9 +4,11 @@
 - name: Install build tools
   hosts: webservers
   remote_user: ec2-user
-  roles:
-    - { role: gcc, become: true }
-    - { role: gcc-c++, become: true }
+  become: true
+  tasks:
+    - yum:
+        name: "@Development tools"
+        state: present
 
 - name: install and upgrade yum packages
   hosts: webservers
@@ -19,12 +21,65 @@
     - yum: { name: 'ruby20', state: removed }
     - yum: { name: 'ruby22', state: removed }
     - yum: { name: 'ruby22-devel', state: removed }
-    - yum: { name: 'ruby24', state: present }
-    - yum: { name: 'ruby24-devel', state: present }
     - yum: { name: 'zlib-devel', state: present }
     - yum: { name: 'openssl-devel', state: present }
+    - yum: { name: 'ruby-devel', state: present }
+    - yum: { name: 'java', state: present }
+
   tags:
     - yum-packages
+
+# Amazon changed how newer Ruby packages are installed. There's probably a better
+# way out there.
+- name: Installs Ruby 2.4 via amazon-linux-extras
+  remote_user: ec2-user
+  hosts: webservers
+  become: true
+  tasks:
+    - command: amazon-linux-extras install ruby2.4 -y
+
+- name: install yum packages for s3fs requirements
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - yum: { name: 'fuse', state: present }
+    - yum: { name: 'fuse-devel', state: present }
+    - yum: { name: 'git', state: present }
+    - yum: { name: 'libcurl-devel', state: present }
+    - yum: { name: 'libxml2-devel', state: present }
+    - yum: { name: 'make', state: present }
+    - yum: { name: 'openssl-devel', state: present }
+    - yum: { name: 'ruby-devel', state: present}
+
+  tags:
+    - yum-packages
+
+- name: Install Git
+  hosts: webservers
+  remote_user: ec2-user
+  roles:
+  - { role: geerlingguy.git, become: true }
+  tags:
+    - git
+
+- name: clone s3fs from Github
+  remote_user: ec2-user
+  hosts: webservers
+  tasks:
+    - git:
+        repo: https://github.com/s3fs-fuse/s3fs-fuse.git
+        version: master
+        dest: /home/ec2-user/s3fs
+        accept_hostkey: true
+  tags:
+    - s3fs
+
+- name: compiles s3fs
+  remote_user: ec2-user
+  hosts: webservers
+  tasks:
+    - command: cd /home/ec2-user/s3fs && ./autogen.sh && ./configure && make && sudo make install
 
 - name: install bundler
   hosts: webservers
@@ -95,6 +150,7 @@
 - name: Install Phusion Passenger
   hosts: webservers
   remote_user: ec2-user
+  become: true
   # needs path to ruby gem executables in /usr/local/bin
   environment:
     PATH: '{{ ansible_env.PATH }}:/usr/local/bin'
@@ -102,14 +158,6 @@
     - { role: passenger, become: true }
   tags:
     - passenger
-
-- name: Install Git
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-  - { role: geerlingguy.git, become: true }
-  tags:
-    - git
 
 - name: Create capistrano shared directories
   hosts: webservers
@@ -149,6 +197,8 @@
 - name: restart httpd
   hosts: webservers
   remote_user: ec2-user
+  become: true
   tasks:
-    - service: name=httpd state=restarted enabled=yes
-      become: true
+    - service:
+        name: httpd
+        state: restarted

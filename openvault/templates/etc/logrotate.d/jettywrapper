@@ -1,6 +1,0 @@
-/var/www/aapb/current/jetty/jettywrapper.log {
-    size 1M
-    rotate 2
-    missingok
-    notifempty
-}

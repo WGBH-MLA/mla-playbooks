@@ -1,5 +1,6 @@
 ---
-# This playbook deploys the application stack required for Open Vault
+# This playbook deploys the application stack required for Open Vault or AAPB
+# ansible-playbook -i openvault/hosts combo/site.yml --private-key ~/.ssh/openvault.wgbh-mla.org.pem --extra-vars "app_name=openvault"
 
 - name: Install build tools
   hosts: webservers
@@ -43,8 +44,6 @@
   remote_user: ec2-user
   become: true
   tasks:
-    - yum: { name: 'fuse', state: present }
-    - yum: { name: 'fuse-devel', state: present }
     - yum: { name: 'git', state: present }
     - yum: { name: 'libcurl-devel', state: present }
     - yum: { name: 'libxml2-devel', state: present }
@@ -63,31 +62,23 @@
   tags:
     - git
 
-- name: clone s3fs from Github
-  remote_user: ec2-user
+- name: create and chown approot
   hosts: webservers
+  remote_user: ec2-user
+  become: yes
   tasks:
-    - git:
-        repo: https://github.com/s3fs-fuse/s3fs-fuse.git
-        version: master
-        dest: /home/ec2-user/s3fs
-        accept_hostkey: true
+    - file: { state: directory, path: "/var/www/{{ app_name }}", owner: ec2-user }
   tags:
-    - s3fs
+    - chowned
 
-- name: compiles s3fs
-  remote_user: ec2-user
-  hosts: webservers
-  tasks:
-    - command: cd /home/ec2-user/s3fs && ./autogen.sh && ./configure && make && sudo make install
-
-- name: install bundler
+- name: create and chown shared
   hosts: webservers
   remote_user: ec2-user
+  become: yes
   tasks:
-    - gem: { name: bundler, state: present }
+    - file: { state: directory, path: "/var/www/{{ app_name }}/shared", owner: ec2-user }
   tags:
-    - bundler
+    - chowned
 
 # Required for nokogiri gem install
 - name: Install patch
@@ -125,7 +116,7 @@
 - name: Config apache virtual host
   hosts: webservers
   remote_user: ec2-user
-  become: true
+  sudo: yes
   tasks:
     - file:
         state: directory
@@ -134,12 +125,12 @@
         state: directory
         path: /etc/httpd/sites-enabled
     - template:
-        src: templates/etc/httpd/sites-available/aapb.conf
-        dest: /etc/httpd/sites-available/aapb.conf
+        src: "templates/{{ app_name }}.conf"
+        dest: "/etc/httpd/sites-available/{{ app_name }}.conf"
     - file:
         state: link
-        src: /etc/httpd/sites-available/aapb.conf
-        dest: /etc/httpd/sites-enabled/aapb.conf
+        src: "/etc/httpd/sites-available/{{ app_name }}.conf"
+        dest: "/etc/httpd/sites-enabled/{{ app_name }}.conf"
     - lineinfile:
         dest: /etc/httpd/conf/httpd.conf
         regexp: 'include \/etc\/httpd\/sites-enabled\/'
@@ -164,10 +155,19 @@
   remote_user: ec2-user
   tasks:
   - name: "Create document root, shared directory, and shared config directory"
-    file: path=/var/www/aapb/shared/config state=directory owner=ec2-user group=ec2-user force=yes
+    file: path="/var/www/{{ app_name }}/shared/config" state=directory owner=ec2-user group=ec2-user force=yes
     become: true
   tags:
     - capistrano
+
+- name: install bundler
+  hosts: webservers
+  remote_user: ec2-user
+  tasks:
+    - gem: { name: bundler, state: present, version: 1.17.3 }
+
+  tags:
+    - bundler
 
 - name: install the ruby racer
   hosts: webservers

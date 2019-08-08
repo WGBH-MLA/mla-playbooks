@@ -1,14 +1,6 @@
 ---
 # This playbook deploys the application stack required for Transcript Editor
 
-# TODOs:
-# Need to create database.yml and application.yml in shared directories created
-# here.
-# Add variables to ec2-user ~/.bashrc
-# sudo su - postgres, then /usr/bin/pg_ctl -D /var/lib/pgsql/data/ start
-# set up postgres user
-# change pg_hba.conf login method to ident for pguser
-
 - name: Install build tools
   hosts: webservers
   remote_user: ec2-user
@@ -25,8 +17,6 @@
   tasks:
     - yum: { name: '*', state: latest }
     - yum: { name: 'ruby20', state: removed }
-    - yum: { name: 'ruby22', state: present }
-    - yum: { name: 'ruby22-devel', state: present }
     - yum: { name: 'zlib-devel', state: present }
     - yum: { name: 'openssl-devel', state: present }
     - yum: { name: 'ruby-devel', state: present }
@@ -35,7 +25,7 @@
     - yum: { name: 'httpd-devel', state: present }
     - yum: { name: 'apr-devel', state: present }
     - yum: { name: 'apr-util-devel', state: present }
-
+    - yum: { name: 'postgresql-devel', state: present }
   tags:
     - yum-packages
 
@@ -43,7 +33,7 @@
   hosts: webservers
   remote_user: ec2-user
   roles:
-  - { role: geerlingguy.git, become: true }
+    - { role: geerlingguy.git, become: true }
   tags:
     - git
 
@@ -54,14 +44,17 @@
   roles:
     - { role: rvm.ruby,
         tags: ruby,
+        become: true,
         rvm1_rubies: ['ruby-2.3.0'],
         rvm1_bundler_install: true,
-        rvm1_user: ec2-user,
+        rvm1_user: root,
+        rvm1_install_flags: '--auto-dotfiles',
+        rvm1_install_path: /usr/local/rvm,
       }
   tags:
     - rvm
 
-- name: Install Phusion Passenger
+- name: Install Phusion Passenger Gem
   hosts: webservers
   remote_user: ec2-user
   become: false
@@ -79,6 +72,17 @@
   tags:
     - passenger-install-apache2-module
 
+- name: Add passenger.conf config file
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - file: { state: directory, path: "/etc/httpd/conf.d", owner: root }
+    - template:
+        src: "templates/etc/httpd/conf.d/passenger.conf"
+        dest: "/etc/httpd/conf.d/passenger.conf"
+  tags: passenger.conf
+
 - name: Installs and Sets Up postgresql9.6 via amazon-linux-extras
   remote_user: ec2-user
   hosts: webservers
@@ -88,20 +92,9 @@
     - shell: rvmsudo amazon-linux-extras install postgresql9.6 -y
     - shell: rvmsudo yum install postgresql-server -y
     # need to only run the first time. errors on subsequent.
-    # - shell: rvmsudo /usr/bin/postgresql-setup --initdb
+    - shell: rvmsudo /usr/bin/postgresql-setup --initdb
   tags:
     - postgresql
-
-- name: Adds updated pg_hba.conf for PostgreSQL config
-  hosts: webservers
-  remote_user: ec2-user
-  sudo: yes
-  tasks:
-    - template:
-        src: "templates/other/pg_hba.conf"
-        dest: "/var/lib/pgsql/data/transcript-editor.conf"
-  tags:
-    - pga_hba.conf
 
 - name: create and chown approot
   hosts: webservers
@@ -150,36 +143,46 @@
         dest: /etc/httpd/conf/httpd.conf
         regexp: 'include \/etc\/httpd\/sites-enabled\/'
         line: "include /etc/httpd/sites-enabled/"
+    # - template:
+    #     src: "templates/other/pg_hba.conf"
+    #     dest: "/var/lib/pgsql/data/pg_hba.conf"
   tags:
     - apache-vhost-config
 
-- name: Create capistrano shared directories
+- name: Create capistrano shared directories and files
   hosts: webservers
   remote_user: ec2-user
+  become: true
   tasks:
-  - name: "Create document root, shared directory, and shared config directory"
-    file: path="/var/www/transcript-editor/shared/config" state=directory owner=ec2-user group=ec2-user force=yes
-    become: true
+    - file:
+        state: directory
+        path: /var/www/transcript-editor/shared/config
+        owner: ec2-user
+        group: ec2-user
+        force: yes
+    - template:
+        src: "templates/config/application.yml"
+        dest: "/var/www/transcript-editor/shared/config/application.yml"
+    - template:
+        src: "templates/config/database.yml"
+        dest: "/var/www/transcript-editor/shared/config/database.yml"
   tags:
     - capistrano
 
-- name: Install therubyracer
-  hosts: webservers
-  remote_user: ec2-user
-  become: false
-  tasks:
-    - shell: rvmsudo gem install therubyracer
-  tags:
-    - therubyracer
-
-# This needs to be tested.
 - name: Install nvm and node
   hosts: webservers
   remote_user: ec2-user
   become: false
   tasks:
-    - shell:  curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.31.0/install.sh | bash
-    - shell: nvm install node
+    - name: install nvm
+      shell:  >
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+      args:
+        creates: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+    - name: install node
+      shell: source /home/ec2-user/.nvm/nvm.sh && nvm install 11.15.0
+      args:
+        executable: /bin/bash
 
 - name: configure logrotate for httpd and jettywrapper logs
   hosts: webservers

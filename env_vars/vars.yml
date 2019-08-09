@@ -1,0 +1,10 @@
+---
+# nonsensitive data
+transcript_editor_db_host: localhost
+transcript_editor_db_user: pguser
+transcript_editor_db_name: transcript_editor_production
+transcript_editor_rails_env: production
+
+# sensitive data
+transcript_editor_db_pass: "{{vault_db_pass}}"
+transcript_editor_secret_key_base: "{{vault_secret_key_base}}"

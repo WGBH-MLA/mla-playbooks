@@ -1,6 +1,49 @@
 ---
 # This playbook deploys the application stack required for Transcript Editor
 
+- name: add the env vars to .bashrc
+  hosts: webservers
+  remote_user: ec2-user
+  become: false
+  vars_files:
+    - ../env_vars/vars.yml
+    - ../env_vars/vault.yml
+  vars_prompt:
+    - name: project_id
+      prompt: "What is the PROJECT_ID for this transcript-editor instance?"
+      private: false
+  tasks:
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_HOST={{transcript_editor_db_host}}'
+        line: "export DB_HOST={{transcript_editor_db_host}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_NAME={{transcript_editor_db_name}}'
+        line: "export DB_NAME={{transcript_editor_db_name}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_USER={{transcript_editor_db_user}}'
+        line: "export DB_USER={{transcript_editor_db_user}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export RAILS_ENV={{transcript_editor_rails_env}}'
+        line: "export RAILS_ENV={{transcript_editor_rails_env}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_PASS={{transcript_editor_db_pass}}'
+        line: "export DB_PASS={{transcript_editor_db_pass}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export SECRET_KEY_BASE={{transcript_editor_secret_key_base}}'
+        line: "export SECRET_KEY_BASE={{transcript_editor_secret_key_base}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export PROJECT_ID={{project_id}}'
+        line: "export PROJECT_ID={{project_id}}"
+  tags:
+    - env_vars
+
 - name: Install build tools
   hosts: webservers
   remote_user: ec2-user
@@ -91,15 +134,13 @@
   tasks:
     - shell: rvmsudo amazon-linux-extras install postgresql9.6 -y
     - shell: rvmsudo yum install postgresql-server -y
-    # need to only run the first time. errors on subsequent.
-    - shell: rvmsudo /usr/bin/postgresql-setup --initdb
   tags:
     - postgresql
 
 - name: create and chown approot
   hosts: webservers
   remote_user: ec2-user
-  become: yes
+  become: true
   tasks:
     - file: { state: directory, path: "/var/www/transcript-editor", owner: ec2-user }
   tags:
@@ -108,7 +149,7 @@
 - name: create and chown shared
   hosts: webservers
   remote_user: ec2-user
-  become: yes
+  become: true
   tasks:
     - file: { state: directory, path: "/var/www/transcript-editor/shared", owner: ec2-user }
   tags:
@@ -124,7 +165,7 @@
 - name: Config apache virtual host
   hosts: webservers
   remote_user: ec2-user
-  sudo: yes
+  sudo: true
   tasks:
     - file:
         state: directory
@@ -143,9 +184,6 @@
         dest: /etc/httpd/conf/httpd.conf
         regexp: 'include \/etc\/httpd\/sites-enabled\/'
         line: "include /etc/httpd/sites-enabled/"
-    # - template:
-    #     src: "templates/other/pg_hba.conf"
-    #     dest: "/var/lib/pgsql/data/pg_hba.conf"
   tags:
     - apache-vhost-config
 

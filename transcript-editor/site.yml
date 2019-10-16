@@ -102,7 +102,7 @@
   remote_user: ec2-user
   become: false
   tasks:
-    - shell: rvmsudo gem install passenger
+    - shell: rvmsudo gem install passenger:6.0.2
   tags:
     - passenger
 

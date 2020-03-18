@@ -55,6 +55,25 @@
   tags:
     - yum-packages
 
+- name: add the env vars to .bashrc
+  hosts: webservers
+  remote_user: ec2-user
+  become: false
+  vars_files:
+    - ../env_vars/vars.yml
+    - ../env_vars/vault.yml
+  tasks:
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export RECAPTCHA_SITE_KEY={{aapb_recaptcha_site_key}}'
+        line: "export DB_HOST={{aapb_recaptcha_site_key}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export RECAPTCHA_SECRET_KEY={{aapb_recaptcha_secret_key}}'
+        line: "export DB_HOST={{aapb_recaptcha_secret_key}}"
+  tags:
+    - env_vars
+
 - name: Install Git
   hosts: webservers
   remote_user: ec2-user

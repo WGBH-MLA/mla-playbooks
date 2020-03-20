@@ -71,6 +71,14 @@
         dest: ~/.bashrc
         regexp: '^export RECAPTCHA_SECRET_KEY={{aapb_recaptcha_secret_key}}'
         line: "export DB_HOST={{aapb_recaptcha_secret_key}}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export API_USER=api-user'
+        line: "export API_USER=api-user"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export API_PASSWORD=L08UA637dyd'
+        line: "export API_PASSWORD=L08UA637dyd"
   tags:
     - env_vars
 

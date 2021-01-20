@@ -66,11 +66,11 @@
     - lineinfile:
         dest: ~/.bashrc
         regexp: '^export RECAPTCHA_SITE_KEY={{aapb_recaptcha_site_key}}'
-        line: "export DB_HOST={{aapb_recaptcha_site_key}}"
+        line: "export RECAPTCHA_SITE_KEY={{aapb_recaptcha_site_key}}"
     - lineinfile:
         dest: ~/.bashrc
         regexp: '^export RECAPTCHA_SECRET_KEY={{aapb_recaptcha_secret_key}}'
-        line: "export DB_HOST={{aapb_recaptcha_secret_key}}"
+        line: "export RECAPTCHA_SECRET_KEY={{aapb_recaptcha_secret_key}}"
     - lineinfile:
         dest: ~/.bashrc
         regexp: '^export API_USER=api-user'

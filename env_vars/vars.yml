@@ -1,6 +1,5 @@
 ---
 # nonsensitive data
-transcript_editor_db_host: localhost
 transcript_editor_db_user: pguser
 transcript_editor_db_name: transcript_editor_production
 transcript_editor_rails_env: production

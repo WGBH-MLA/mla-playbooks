@@ -129,17 +129,6 @@
         dest: "/etc/httpd/conf.d/passenger.conf"
   tags: passenger.conf
 
-# - name: Installs and Sets Up postgresql9.6 via amazon-linux-extras
-#   remote_user: ec2-user
-#   hosts: webservers
-#   become: true
-#   become_user: ec2-user
-#   tasks:
-#     - shell: rvmsudo amazon-linux-extras install postgresql9.6 -y
-#     - shell: rvmsudo yum install postgresql-server -y
-#   tags:
-#     - postgresql
-
 - name: create and chown approot
   hosts: webservers
   remote_user: ec2-user

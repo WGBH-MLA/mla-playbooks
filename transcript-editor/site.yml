@@ -1,84 +1,184 @@
 ---
 # This playbook deploys the application stack required for Transcript Editor
 
+- name: add the env vars to .bashrc
+  hosts: webservers
+  remote_user: ec2-user
+  become: false
+  vars_files:
+    - ../env_vars/vars.yml
+    # - ../env_vars/vault.yml
+  # vars_prompt:
+    # - name: project_id
+    #   prompt: "What is the PROJECT_ID for this transcript-editor instance?"
+    #   private: false
+    # - name: db_host
+    #   prompt: "What is the RDS DB endpoint for the site's DB_HOST?"
+    #   private: false
+  tasks:
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_HOST={{ db_host }}'
+        line: "export DB_HOST={{ db_host }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_NAME={{ db_name }}'
+        line: "export DB_NAME={{ db_name }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_USER={{ db_user }}'
+        line: "export DB_USER={{ db_user }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export DB_PASS={{ db_pass }}' 
+        line: "export DB_PASS={{ db_pass }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export RAILS_ENV={{ rails_env }}'
+        line: "export RAILS_ENV={{ rails_env }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export TRANSCRIPT_HOST={{ transcript_host }}'
+        line: "export TRANSCRIPT_HOST={{ transcript_host }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export PROJECT_ID={{ project_id }}'
+        line: "export PROJECT_ID={{ project_id }}"  
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export SECRET_KEY_BASE={{ rails_secret_key }}'
+        line: "export SECRET_KEY_BASE={{ rails_secret_key }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export GOOGLE_CLIENT_ID={{ google_client_id }}'
+        line: "export GOOGLE_CLIENT_ID={{ google_client_id }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export GOOGLE_CLIENT_SECRET={{ google_client_secret }}'
+        line: "export GOOGLE_CLIENT_SECRET={{ google_client_secret }}"
+    - lineinfile:
+        dest: ~/.bashrc
+        regexp: '^export RAILS_SERVE_STATIC_FILES=true'
+        line: "export RAILS_SERVE_STATIC_FILES=true"
+  tags:
+    - env_vars
+
 - name: Install build tools
   hosts: webservers
   remote_user: ec2-user
-  roles:
-    - { role: gcc, become: true }
-    - { role: gcc-c++, become: true }
+  become: true
+  tasks:
+    - yum:
+        name: "@Development tools"
+        state: present
 
 - name: install and upgrade yum packages
   hosts: webservers
   remote_user: ec2-user
   become: true
   tasks:
-#     - yum:  { name: '*', state: latest }
-#     # TODO: Figure out a better way to specify the ruby version. The (current)
-#     # Amazon Linux AMI comes with Ruby 2.0, but this will probably change.
+    - yum: { name: '*', state: latest }
     - yum: { name: 'ruby20', state: removed }
-    - yum: { name: 'ruby22', state: present }
-    - yum: { name: 'ruby22-devel', state: present }
     - yum: { name: 'zlib-devel', state: present }
     - yum: { name: 'openssl-devel', state: present }
-    - yum: { name: 'postgresql96-server', state: present }
-    - yum: { name: 'postgresql96', state: present }
-    - yum: { name: 'postgresql96-devel', state: present }
-    - yum: { name: 'epel-release', state: present }
+    - yum: { name: 'ruby-devel', state: present }
+    - yum: { name: 'libcurl-devel', state: present }
+    - yum: { name: 'httpd', state: present }
+    - yum: { name: 'httpd-devel', state: present }
+    - yum: { name: 'apr-devel', state: present }
+    - yum: { name: 'apr-util-devel', state: present }
+    - yum: { name: 'postgresql-devel', state: present }
   tags:
     - yum-packages
 
-# psycopg2 for Postgresql
-- name: Install psycopg2
+- name: Install Git
   hosts: webservers
   remote_user: ec2-user
-  tasks:
-    - pip: name=psycopg2
-      become: yes
-      become_method: sudo
+  roles:
+    - { role: geerlingguy.git, become: true }
   tags:
-    - psycopg2
+    - git
 
-- name: install gems
+- name: Configure servers with RVM ruby support
   hosts: webservers
   remote_user: ec2-user
+  become: false
+  roles:
+    - { role: rvm.ruby,
+        tags: ruby,
+        become: true,
+        rvm1_rubies: ['ruby-2.7.2'],
+        rvm1_bundler_install: true,
+        rvm1_user: root,
+        rvm1_install_flags: '--auto-dotfiles',
+        rvm1_install_path: /usr/local/rvm,
+      }
+  tags:
+    - rvm
+
+- name: Install Phusion Passenger Gem
+  hosts: webservers
+  remote_user: ec2-user
+  become: false
   tasks:
-    - gem: { name: bundler, state: present, user_install: no }
+    - shell: rvmsudo gem install passenger:6.0.2
+  tags:
+    - passenger
+
+- name: Install bundler
+  hosts: webservers
+  remote_user: ec2-user
+  become: false
+  tasks:
+    - shell: rvmsudo gem install bundler:2.2.14
   tags:
     - bundler
 
-# Required for nokogiri gem install
+# needs to be run manually
+# - name: Install Apache Webserver
+#   hosts: webservers
+#   remote_user: ec2-user
+#   become: false
+#   tasks:
+#     - shell: rvmsudo passenger-install-apache2-module --auto
+#   tags:
+#     - passenger-install-apache2-module
+
+- name: Add passenger.conf config file
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - file: { state: directory, path: "/etc/httpd/conf.d", owner: root }
+    - template:
+        src: "templates/etc/httpd/conf.d/passenger.conf"
+        dest: "/etc/httpd/conf.d/passenger.conf"
+  tags: passenger.conf
+
+- name: create and chown approot
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - file: { state: directory, path: "/var/www/transcript-editor", owner: ec2-user }
+  tags:
+    - chowned
+
+- name: create and chown shared
+  hosts: webservers
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - file: { state: directory, path: "/var/www/transcript-editor/shared", owner: ec2-user }
+  tags:
+    - chowned
+
+# # Required for nokogiri gem install
 - name: Install patch
   hosts: webservers
   remote_user: ec2-user
   roles:
     - { role: patch, become: true }
-
-- name: Install libcurl-devel
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - yum: name=libcurl-devel
-      become: yes
-      become_method: sudo
-  tags:
-    - libcurl-devel
-
-- name: Install sqlite-devel
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - yum: name=sqlite-devel
-      become: yes
-      become_method: sudo
-  tags:
-    - sqlite-devel
-
-- name: Install apache webserver
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-    - { role: httpd, become: true }
 
 - name: Config apache virtual host
   hosts: webservers
@@ -92,12 +192,12 @@
         state: directory
         path: /etc/httpd/sites-enabled
     - template:
-        src: templates/etc/httpd/sites-available/transcript-editor.conf
-        dest: /etc/httpd/sites-available/transcript-editor.conf
+        src: "templates/etc/httpd/sites-available/transcript-editor.conf"
+        dest: "/etc/httpd/sites-available/transcript-editor.conf"
     - file:
         state: link
-        src: /etc/httpd/sites-available/transcript-editor.conf
-        dest: /etc/httpd/sites-enabled/transcript-editor.conf
+        src: "/etc/httpd/sites-available/transcript-editor.conf"
+        dest: "/etc/httpd/sites-enabled/transcript-editor.conf"
     - lineinfile:
         dest: /etc/httpd/conf/httpd.conf
         regexp: 'include \/etc\/httpd\/sites-enabled\/'
@@ -105,34 +205,47 @@
   tags:
     - apache-vhost-config
 
-- name: Install Phusion Passenger
+- name: Create capistrano shared directories and files
   hosts: webservers
   remote_user: ec2-user
-  # needs path to ruby gem executables in /usr/local/bin
-  environment:
-    PATH: '{{ ansible_env.PATH }}:/usr/local/bin'
-  roles:
-    - { role: passenger, become: true }
-  tags:
-    - passenger
-
-- name: Install Git
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-  - { role: geerlingguy.git, become: true }
-  tags:
-    - git
-
-- name: Create capistrano shared directories
-  hosts: webservers
-  remote_user: ec2-user
+  become: true
   tasks:
-  - name: "Create document root, shared directory, and shared config directory"
-    file: path=/var/www/transcript-editor/shared/config state=directory owner=ec2-user group=ec2-user force=yes
-    become: true
+    - file:
+        state: directory
+        path: /var/www/transcript-editor/shared/config
+        owner: ec2-user
+        group: ec2-user
+        force: yes
+    - template:
+        src: "templates/config/application.yml"
+        dest: "/var/www/transcript-editor/shared/config/application.yml"
+    - template:
+        src: "templates/config/database.yml"
+        dest: "/var/www/transcript-editor/shared/config/database.yml"
+    - template:
+        src: "templates/config/ci.yml"
+        dest: "/var/www/transcript-editor/shared/config/ci.yml"        
+    # - file:
+    #     state: link
+    #     src: "/var/www/transcript-editor/shared/config/ci.yml"                
+    #     dest: "/var/www/transcript-editor/current/config/ci.yml"                
   tags:
     - capistrano
+
+- name: Install nvm and node
+  hosts: webservers
+  remote_user: ec2-user
+  become: false
+  tasks:
+    - name: install nvm
+      shell:  >
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+      args:
+        creates: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+    - name: install node
+      shell: source /home/ec2-user/.nvm/nvm.sh && nvm install 12.9.0
+      args:
+        executable: /bin/bash
 
 - name: configure logrotate for httpd logs
   hosts: webservers
@@ -149,40 +262,12 @@
   tags:
     - logrotate
 
-- name: upload config file to shared/config directory
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - template:
-        src: templates/config/database.sample.yml
-        dest: /var/www/transcript-editor/shared/config/database.sample.yml
-    - template:
-        src: templates/config/application.sample.yml
-        dest: /var/www/transcript-editor/shared/config/application.sample.yml
-  tags:
-    - database.sample.yml
-    - application.sample.yml
-
-- name: upload backup shell script
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - template:
-        src: templates/other/backup.sh
-        dest: /home/ec2-user/backup.sh
-        mode: 711
-  tags:
-    - backup.sh
-
-- name: backup database cron task
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - cron: name="1" job="/home/ec2-user/backup.sh"
-
 - name: restart httpd
   hosts: webservers
   remote_user: ec2-user
+  become: false
   tasks:
-    - service: name=httpd state=restarted enabled=yes
-      become: true
+    - shell: rvmsudo /usr/sbin/apachectl restart
+  tags:
+    - restart httpd
+

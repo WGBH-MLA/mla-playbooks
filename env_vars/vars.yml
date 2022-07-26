@@ -19,12 +19,12 @@
 
 
 
-db_host: wrvr-transcript-editor.cmrjt7rckp5r.us-east-1.rds.amazonaws.com
+db_host: PLACEHOLDER
 db_name: transcript_editor_production
 db_user: pguser
 rails_env: production 
 project_id: riverside
-transcript_host: https://wrvrtranscripts.americanarchive.org
+transcript_host: https://placeholder.full.hostname
 
 rails_secret_key: PLACEHOLDER
 db_pass: PLACEHOLDER

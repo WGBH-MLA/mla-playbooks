@@ -29,6 +29,13 @@
   tags:
     - yum-packages
 
+- name: enable epel extras, so nodejs yum install will work
+  remote_user: ec2-user
+  hosts: webservers
+  become: true
+  tasks:
+    - shell: amazon-linux-extras install epel -y
+
 # Amazon changed how newer Ruby packages are installed. There's probably a better
 # way out there.
 - name: Installs Ruby 2.4 via amazon-linux-extras
@@ -38,19 +45,12 @@
   tasks:
     - command: amazon-linux-extras install ruby2.4 -y
 
-- name: install yum packages for s3fs requirements
+- name: install yum packages for node
   hosts: webservers
   remote_user: ec2-user
   become: true
   tasks:
-    - yum: { name: 'fuse', state: present }
-    - yum: { name: 'fuse-devel', state: present }
-    - yum: { name: 'git', state: present }
-    - yum: { name: 'libcurl-devel', state: present }
-    - yum: { name: 'libxml2-devel', state: present }
-    - yum: { name: 'make', state: present }
-    - yum: { name: 'openssl-devel', state: present }
-    - yum: { name: 'ruby-devel', state: present}
+    - yum: { name: 'nodejs', state: present }
 
   tags:
     - yum-packages
@@ -89,24 +89,6 @@
   - { role: geerlingguy.git, become: true }
   tags:
     - git
-
-- name: clone s3fs from Github
-  remote_user: ec2-user
-  hosts: webservers
-  tasks:
-    - git:
-        repo: https://github.com/s3fs-fuse/s3fs-fuse.git
-        version: master
-        dest: /home/ec2-user/s3fs
-        accept_hostkey: true
-  tags:
-    - s3fs
-
-- name: compiles s3fs
-  remote_user: ec2-user
-  hosts: webservers
-  tasks:
-    - command: cd /home/ec2-user/s3fs && ./autogen.sh && ./configure && make && sudo make install
 
 - name: install bundler
   hosts: webservers

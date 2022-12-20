@@ -1,56 +1,16 @@
 ---
-# This playbook deploys the application stack required for Open Vault
+# This playbook deploys the application stack required for Boston Local TV
 
-- name: Install build tools
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-    - { role: gcc, sudo: yes }
-    - { role: gcc-c++, sudo: yes }
-
-# Required for nokogiri gem install
-- name: Install patch
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-    - { role: patch, sudo: yes }
-
-- name: Install libcurl-devel
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - yum: name=libcurl-devel
-      become: yes
-      become_method: sudo
-  tags:
-    - libcurl-devel
-
-- name: Install sqlite-devel
-  hosts: webservers
-  remote_user: ec2-user
-  tasks:
-    - yum: name=sqlite-devel
-      become: yes
-      become_method: sudo
-  tags:
-    - sqlite-devel
-
-- name: Install ruby from source
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-    - { role: geerlingguy.ruby, sudo: yes, ruby_install_from_source: true }
-
-- name: Install apache webserver
-  hosts: webservers
-  remote_user: ec2-user
-  roles:
-    - { role: httpd, sudo: yes }
+# - name: Install apache webserver
+#   hosts: webservers
+#   remote_user: ec2-user
+#   roles:
+#     - { role: httpd, become: yes }
 
 - name: Config apache virtual host
   hosts: webservers
   remote_user: ec2-user
-  sudo: yes
+  become: yes
   tasks:
     - file:
         state: directory
@@ -72,22 +32,40 @@
   tags:
     - apache-vhost-config
 
-- name: Install Phusion Passenger
+- name: configure logrotate for httpd and jettywrapper logs
   hosts: webservers
   remote_user: ec2-user
-  # needs path to ruby gem executables in /usr/local/bin
-  environment:
-    PATH: '{{ ansible_env.PATH }}:/usr/local/bin'
-  roles:
-    - { role: passenger, sudo: yes }
+  become: true
+  tasks:
+    - template:
+        src: templates/etc/logrotate.d/httpd
+        dest: /etc/logrotate.d/httpd
+    - template:
+        src: templates/etc/logrotate.d/jettywrapper
+        dest: /etc/logrotate.d/jettywrapper
+    - template:
+        src: templates/etc/cron.hourly/logrotate
+        dest: /etc/cron.hourly/logrotate
+        mode: 0755
   tags:
-    - passenger
+    - logrotate
 
 - name: Install Git
   hosts: webservers
   remote_user: ec2-user
   roles:
-  - { role: geerlingguy.git, sudo: yes }
+  - { role: geerlingguy.git, become: yes }
+
+# - name: Configure servers with ruby support for single user
+#   hosts: webservers
+#   remote_user: ec2-user
+#   roles:
+#     - { role: rvm.ruby,
+#         tags: ruby,
+#         rvm1_rubies: ['ruby-2.3.0'],
+#         rvm1_user: 'ec2-user'
+#       }
+#   tags: rvm
 
 - name: Create capistrano shared directories
   hosts: webservers
@@ -95,21 +73,71 @@
   tasks:
   - name: "Create document root, shared directory, and shared config directory"
     file: path=/var/www/bostonlocaltv/shared/config state=directory owner=ec2-user group=ec2-user force=yes
-    sudo: yes
+    become: yes
   tags:
     - capistrano
 
+# - name: Install Phusion Passenger
+#   hosts: webservers
+#   remote_user: ec2-user
+#   roles:
+#     - { role: passenger, become: yes }
+#   tags:
+#     - passenger
 
-- name: install the ruby racer
+# - name: install libxurl devle
+#   hosts: webservers
+#   remote_user: ec2-user
+#   become: yes
+#   tasks:
+#   - yum:
+#     name: libcurl-devel
+#   tags:
+#     - curl
+
+- name: install libxurl devle
+  hosts: webservers
+  remote_user: ec2-user
+  become: yes
+  tasks:
+  - yum:
+    name: java-1.8.0-openjdk
+  tags:
+    - java
+
+# sudo yum install java-1.8.0-openjdk
+
+
+- name: install passeinger apach emodule
   hosts: webservers
   remote_user: ec2-user
   tasks:
-    - gem: "name=therubyracer state=present"
-      sudo: yes
+  - shell: /home/ec2-user/.rvm/gems/ruby-2.3.0/wrappers/passenger-install-apache2-module --auto
+
+# - name: install bundler gem
+#   hosts: webservers
+#   remote_user: ec2-user
+#   tasks:
+#   - gem:
+#       name: bundler
+#       user_install: no
+#   tags:
+#     - bundler
+
+# - name: Bundle install
+#   hosts: webservers
+#   remote_user: ec2-user
+#   tasks:
+#   - bundler: 
+#       state: present
+#       chdir: /var/www/bostonlocaltv/current
+#   tags:
+#     - bundler
 
 - name: restart httpd
   hosts: webservers
   remote_user: ec2-user
   tasks:
     - service: name=httpd state=restarted enabled=yes
-      sudo: yes
+      become: yes
+

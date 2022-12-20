@@ -1,0 +1,99 @@
+---
+# This playbook deploys the application stack required for Boston Local TV
+
+- name: create and chown approot
+  hosts: web
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - file: { state: directory, path: "/var/app", owner: ec2-user }
+  tags:
+    - chowned
+
+- name: Install Git
+  hosts: web
+  remote_user: ec2-user
+  roles:
+    - { role: geerlingguy.git, become: yes }
+
+# sudo amazon-linux-extras enable nginx1
+
+- name: nginx install it
+  hosts: web
+  become: yes
+  remote_user: ec2-user
+  tasks:
+   - yum: name=nginx state=present
+  tags: nginx
+
+- name: nginx.conf it
+  hosts: web
+  become: yes
+  remote_user: ec2-user
+  tasks:
+    - template: src=./nginx-pbcorevalidator.conf dest=/etc/nginx/nginx.conf owner=ec2-user group=wheel mode="400" force=yes
+  tags: nginx
+
+- name: resStart service nginx, if not started
+  hosts: web
+  become: yes
+  remote_user: ec2-user
+  tasks:
+    - service:
+        name: nginx
+        state: restarted
+        enabled: true
+  tags: nginx
+
+- name: install yum packages
+  hosts: web
+  remote_user: ec2-user
+  become: true
+  tasks:
+    - yum: { name: 'libxml2-devel', state: present }
+  tags:
+    - yum
+
+- name: Configure servers with ruby support for single user
+  hosts: web
+  remote_user: ec2-user
+  roles:
+    - { role: rvm.ruby,
+        tags: ruby,
+        rvm1_rubies: ['ruby-2.5.1'],
+        rvm1_user: 'ec2-user'
+      }
+  tags: rvm
+
+# - name: install bundler gem
+#   hosts: web
+#   remote_user: ec2-user
+#   tasks:
+#   - gem:
+#       name: bundler
+#   tags:
+#     - gem
+
+- name: clone branch
+  hosts: web
+  remote_user: ec2-user
+  become: yes
+  tasks:
+    - git:  
+        repo: https://github.com/WGBH-MLA/pbcorevalidator.git
+        dest: /var/app/pbcorevalidator
+        version: master
+  
+  tags:
+    - copy
+
+# - name: Bundle install
+#   hosts: web
+#   remote_user: ec2-user
+#   become: yes
+#   tasks:
+#   - bundler: 
+#       state: present
+#       chdir: /var/app/pbcorevalidator
+#   tags:
+#     - bundler

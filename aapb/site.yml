@@ -10,6 +10,13 @@
         name: "@Development tools"
         state: present
 
+- name: enable epel extras, so nodejs yum install will work
+  remote_user: ec2-user
+  hosts: webservers
+  become: true
+  tasks:
+    - shell: amazon-linux-extras install epel -y
+
 - name: install and upgrade yum packages
   hosts: webservers
   remote_user: ec2-user
@@ -25,16 +32,12 @@
     - yum: { name: 'openssl-devel', state: present }
     - yum: { name: 'ruby-devel', state: present }
     - yum: { name: 'java', state: present }
+    # need to use the newest amazon linux 2 ami for this to resolve to correct libuv version (>1.1.42) for installing node16 from yum!
+    - yum: { name: 'libuv', state: present }
+    - yum: { name: 'nodejs', state: present }
 
   tags:
     - yum-packages
-
-- name: enable epel extras, so nodejs yum install will work
-  remote_user: ec2-user
-  hosts: webservers
-  become: true
-  tasks:
-    - shell: amazon-linux-extras install epel -y
 
 # Amazon changed how newer Ruby packages are installed. There's probably a better
 # way out there.
@@ -44,16 +47,6 @@
   become: true
   tasks:
     - command: amazon-linux-extras install ruby2.4 -y
-
-- name: install yum packages for node
-  hosts: webservers
-  remote_user: ec2-user
-  become: true
-  tasks:
-    - yum: { name: 'nodejs', state: present }
-
-  tags:
-    - yum-packages
 
 - name: add the env vars to .bashrc
   hosts: webservers

@@ -19,6 +19,9 @@
         state: directory
         path: /etc/httpd/sites-enabled
     - template:
+        src: templates/bostonlocaltvmain.conf
+        dest: /etc/httpd/conf/httpd.conf
+    - template:
         src: templates/bostonlocaltv.conf
         dest: /etc/httpd/sites-available/bostonlocaltv.conf
     - file:
